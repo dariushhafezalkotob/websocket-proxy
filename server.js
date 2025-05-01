@@ -6,7 +6,7 @@ const server = new WebSocket.Server({ port: process.env.PORT || 8080 });
 server.on('connection', (clientWs) => {
   console.log('Client connected');
 
-  // Connect to OpenAI Realtime API with beta header
+  // Connect to OpenAI Realtime API
   const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
     headers: {
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -16,11 +16,17 @@ server.on('connection', (clientWs) => {
 
   openaiWs.on('open', () => {
     console.log('Connected to OpenAI Realtime API');
-    // Initialize session (adjust based on OpenAI docs)
-    openaiWs.send(JSON.stringify({
-      type: 'session.create',
-      session: { model: 'gpt-4o-realtime-preview-2024-10-01' }
-    }));
+    // Test message to OpenAI (optional, for debugging)
+    setTimeout(() => {
+      openaiWs.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: 'What is 2 + 2?'
+        }
+      }));
+    }, 1000);
   });
 
   // Handle client messages
