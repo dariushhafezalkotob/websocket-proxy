@@ -21,7 +21,7 @@ server.on('connection', (clientWs) => {
       type: 'session.update',
       session: {
         model: 'gpt-4o-realtime-preview-2024-10-01',
-        modalities: ['audio', 'text'],
+        modalities: ['input_audio', 'input_text'],
         instructions: 'You are a friendly assistant.'
       }
     }));
@@ -33,7 +33,7 @@ server.on('connection', (clientWs) => {
           type: 'message',
           role: 'user',
           content: [
-            { type: 'text', text: 'What is 2 + 2?' }
+            { type: 'input_text', text: 'What is 2 + 2?' }
           ]
         }
       }));
