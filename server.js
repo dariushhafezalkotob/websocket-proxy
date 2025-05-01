@@ -16,7 +16,16 @@ server.on('connection', (clientWs) => {
 
   openaiWs.on('open', () => {
     console.log('Connected to OpenAI Realtime API');
-    // Test message to OpenAI (optional, for debugging)
+    // Configure session
+    openaiWs.send(JSON.stringify({
+      type: 'session.update',
+      session: {
+        model: 'gpt-4o-realtime-preview-2024-10-01',
+        modalities: ['audio', 'text'],
+        instructions: 'You are a friendly assistant.'
+      }
+    }));
+    // Test message (optional, for debugging)
     setTimeout(() => {
       openaiWs.send(JSON.stringify({
         type: 'conversation.item.create',
@@ -27,6 +36,9 @@ server.on('connection', (clientWs) => {
             { type: 'text', text: 'What is 2 + 2?' }
           ]
         }
+      }));
+      openaiWs.send(JSON.stringify({
+        type: 'response.create'
       }));
     }, 1000);
   });
