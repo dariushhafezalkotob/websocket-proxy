@@ -18,14 +18,16 @@ server.on('connection', (clientWs) => {
     console.log('Connected to OpenAI Realtime API');
 
     // Configure session with correct modalities
-    openaiWs.send(JSON.stringify({
-      type: 'session.update',
-      session: {
-        model: 'gpt-4o-realtime-preview-2024-10-01',
-        modalities: ['text', 'audio'], // ✅ correct
-        instructions: 'You are a friendly assistant.'
-      }
-    }));
+      openaiWs.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [
+            { type: 'input_text', text: 'What is 2 + 2?' } // ✅ FIXED
+          ]
+        }
+      }));
 
     // Optional test message
     setTimeout(() => {
