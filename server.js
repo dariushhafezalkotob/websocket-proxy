@@ -16,16 +16,18 @@ server.on('connection', (clientWs) => {
 
   openaiWs.on('open', () => {
     console.log('Connected to OpenAI Realtime API');
+
     // Configure session with correct modalities
     openaiWs.send(JSON.stringify({
       type: 'session.update',
       session: {
         model: 'gpt-4o-realtime-preview-2024-10-01',
-        modalities: ['text', 'audio'],
+        modalities: ['text', 'audio'], // ✅ correct
         instructions: 'You are a friendly assistant.'
       }
     }));
-    // Test message (optional, for debugging)
+
+    // Optional test message
     setTimeout(() => {
       openaiWs.send(JSON.stringify({
         type: 'conversation.item.create',
@@ -37,15 +39,33 @@ server.on('connection', (clientWs) => {
           ]
         }
       }));
-      openaiWs.send(JSON.stringify({
-        type: 'response.create'
-      }));
+      openaiWs.send(JSON.stringify({ type: 'response.create' }));
     }, 1000);
   });
 
-  // Handle client messages
+  // Forward messages from client to OpenAI, with safety check
   clientWs.on('message', (message) => {
     console.log('Received from client:', message.toString());
+
+    try {
+      const parsed = JSON.parse(message);
+
+      // 🚫 Block unsupported modality: 'input_audio'
+      if (
+        parsed.type === 'session.update' &&
+        parsed.session?.modalities?.includes('input_audio')
+      ) {
+        console.warn('Blocked invalid modality from client:', parsed.session.modalities);
+        clientWs.send(JSON.stringify({ error: "Invalid modality: 'input_audio'. Use 'text' or 'audio'." }));
+        return;
+      }
+
+    } catch (e) {
+      console.error('Invalid JSON received from client:', e.message);
+      clientWs.send(JSON.stringify({ error: 'Invalid JSON format.' }));
+      return;
+    }
+
     if (openaiWs.readyState === WebSocket.OPEN) {
       openaiWs.send(message);
     } else {
@@ -54,7 +74,7 @@ server.on('connection', (clientWs) => {
     }
   });
 
-  // Handle OpenAI responses
+  // Forward messages from OpenAI to client
   openaiWs.on('message', (message) => {
     console.log('Received from OpenAI:', message.toString());
     if (clientWs.readyState === WebSocket.OPEN) {
@@ -62,7 +82,7 @@ server.on('connection', (clientWs) => {
     }
   });
 
-  // Handle errors
+  // Error handling
   openaiWs.on('error', (error) => {
     console.error('OpenAI WebSocket error:', error.message);
     if (clientWs.readyState === WebSocket.OPEN) {
@@ -88,11 +108,15 @@ server.on('connection', (clientWs) => {
     }
   });
 
-  // Keep connections alive
-  setInterval(() => {
+  // Keep alive with pings
+  const pingInterval = setInterval(() => {
     if (clientWs.readyState === WebSocket.OPEN) clientWs.ping();
     if (openaiWs.readyState === WebSocket.OPEN) openaiWs.ping();
-  }, 30000); // Ping every 30 seconds
+  }, 30000);
+
+  // Clean up ping interval on close
+  clientWs.on('close', () => clearInterval(pingInterval));
+  openaiWs.on('close', () => clearInterval(pingInterval));
 });
 
 console.log(`Server running on port ${process.env.PORT || 8080}`);
