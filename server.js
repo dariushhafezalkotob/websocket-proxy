@@ -23,7 +23,9 @@ server.on('connection', (clientWs) => {
         item: {
           type: 'message',
           role: 'user',
-          content: 'What is 2 + 2?'
+          content: [
+            { type: 'text', text: 'What is 2 + 2?' }
+          ]
         }
       }));
     }, 1000);
