@@ -6,18 +6,24 @@ const server = new WebSocket.Server({ port: process.env.PORT || 8080 });
 server.on('connection', (clientWs) => {
   console.log('Client connected');
 
-  // Connect to OpenAI Realtime API
+  // Connect to OpenAI Realtime API with beta header
   const openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
-    headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` }
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      'openai-beta': 'realtime=v1'
+    }
   });
 
   openaiWs.on('open', () => {
     console.log('Connected to OpenAI Realtime API');
-    // Send an initial message to OpenAI to keep the connection active
-    openaiWs.send(JSON.stringify({ type: 'session.start' })); // Adjust based on OpenAI's requirements
+    // Initialize session (adjust based on OpenAI docs)
+    openaiWs.send(JSON.stringify({
+      type: 'session.create',
+      session: { model: 'gpt-4o-realtime-preview-2024-10-01' }
+    }));
   });
 
-  // Forward client messages to OpenAI
+  // Handle client messages
   clientWs.on('message', (message) => {
     console.log('Received from client:', message.toString());
     if (openaiWs.readyState === WebSocket.OPEN) {
@@ -28,35 +34,41 @@ server.on('connection', (clientWs) => {
     }
   });
 
-  // Forward OpenAI responses to client
+  // Handle OpenAI responses
   openaiWs.on('message', (message) => {
     console.log('Received from OpenAI:', message.toString());
-    clientWs.send(message);
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(message);
+    }
   });
 
   // Handle errors
   openaiWs.on('error', (error) => {
-    console.error('OpenAI WebSocket error:', error);
-    clientWs.send(JSON.stringify({ error: 'OpenAI connection error' }));
+    console.error('OpenAI WebSocket error:', error.message);
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify({ error: `OpenAI error: ${error.message}` }));
+    }
   });
 
   clientWs.on('error', (error) => {
-    console.error('Client WebSocket error:', error);
+    console.error('Client WebSocket error:', error.message);
   });
 
   // Handle disconnections
-  clientWs.on('close', () => {
-    console.log('Client disconnected');
+  clientWs.on('close', (code, reason) => {
+    console.log(`Client disconnected. Code: ${code}, Reason: ${reason.toString()}`);
     openaiWs.close();
   });
 
-  openaiWs.on('close', () => {
-    console.log('Disconnected from OpenAI Realtime API');
-    clientWs.send(JSON.stringify({ error: 'OpenAI connection closed' }));
-    clientWs.close();
+  openaiWs.on('close', (code, reason) => {
+    console.log(`OpenAI disconnected. Code: ${code}, Reason: ${reason.toString()}`);
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify({ error: `OpenAI connection closed: ${reason || 'Unknown reason'}` }));
+      clientWs.close();
+    }
   });
 
-  // Keep connections alive with pings
+  // Keep connections alive
   setInterval(() => {
     if (clientWs.readyState === WebSocket.OPEN) clientWs.ping();
     if (openaiWs.readyState === WebSocket.OPEN) openaiWs.ping();
