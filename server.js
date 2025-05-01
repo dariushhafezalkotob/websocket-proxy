@@ -16,12 +16,12 @@ server.on('connection', (clientWs) => {
 
   openaiWs.on('open', () => {
     console.log('Connected to OpenAI Realtime API');
-    // Configure session
+    // Configure session with correct modalities
     openaiWs.send(JSON.stringify({
       type: 'session.update',
       session: {
         model: 'gpt-4o-realtime-preview-2024-10-01',
-        modalities: ['input_audio', 'input_text'],
+        modalities: ['text', 'audio'],
         instructions: 'You are a friendly assistant.'
       }
     }));
@@ -33,7 +33,7 @@ server.on('connection', (clientWs) => {
           type: 'message',
           role: 'user',
           content: [
-            { type: 'input_text', text: 'What is 2 + 2?' }
+            { type: 'text', text: 'What is 2 + 2?' }
           ]
         }
       }));
